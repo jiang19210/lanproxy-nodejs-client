@@ -11,16 +11,16 @@ exports.encoder = function (msg) {
         bodyLength += Buffer.byteLength(msg.data);
     }
 
-    var bufLength = bodyLength - SERIAL_NUMBER_SIZE + HEADER_SIZE;
-    var buf = Buffer.alloc(bufLength);
+    var buf = Buffer.alloc(bodyLength + HEADER_SIZE);
     var offset = 0;
     buf.writeUInt32BE(bodyLength, offset);
     offset += 4;
     buf.writeUInt8(msg.type, offset);
     offset += 1;
-    var serialNumberBuf = this.buffer64(msg.serialNumber);
-    buf = Buffer.concat([buf, serialNumberBuf]);
-    offset += 8;
+    buf.writeUInt32BE(msg.serialNumber >> 8, offset); //write the high order bits (shifted over)
+    offset += 4;
+    buf.writeUInt32BE(msg.serialNumber & 0x00ff, offset);
+    offset += 4;
     if (msg.uri != null) {
         buf.writeUInt8(uriBytesLength, offset);
         offset += 1;
@@ -36,13 +36,39 @@ exports.encoder = function (msg) {
     return buf;
 };
 
-exports.decoder = function (message) {
+exports.decoder = function (buff) {
+    var buf = buff;
+    if (buf == null) {
+        return null;
+    }
+    if (buf.length < HEADER_SIZE) {
+        return null;
+    }
+    var offset = 0;
+    var frameLength = buf.readUInt32BE(offset);
+    if (buf.length < frameLength) {
+        return null;
+    }
+    offset += 4;
 
-};
+    var type = buf.readUInt8(offset);
+    offset += 1;
+    var sn = (buf.readUInt32BE(offset) << 8) + buf.readUInt32BE(offset + 4);
+    offset += 8;
+    var uriLength = buf.readUInt8(offset);
+    var uriBuf = Buffer.alloc(uriLength);
+    buf.copy(uriBuf, 0, offset, uriLength);
+    offset += uriLength;
+    var uri = uriBuf.toString();
 
-exports.buffer64 = function (i) {
-    var buf = Buffer.alloc(8);
-    buf.writeUInt32BE(i >> 8, 0); //write the high order bits (shifted over)
-    buf.writeUInt32BE(i & 0x00ff, 4);
-    return buf;
+    var dataBuf = Buffer.alloc(frameLength - TYPE_SIZE - SERIAL_NUMBER_SIZE - URI_LENGTH_SIZE - uriLength);
+    buf.copy(dataBuf, 0, offset, dataBuf.length);
+    //var data = dataBuf.toString();
+
+    return {
+        'type': type,
+        'serialNumber': sn,
+        'uri': uri,
+        'data': dataBuf
+    }
 };
