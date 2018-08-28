@@ -19,6 +19,7 @@ function connectionAuth(port, host) {
             console.log('connect proxy server %s:%s success', host, port);
         } else {
             console.log('connect proxy server %s:%s is close', host, port);
+            socketManager.clearLocalProxySocket();
             proxySocket = connectionAuth();
         }
     });

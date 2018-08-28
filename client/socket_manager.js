@@ -45,7 +45,15 @@ exports.addLocalProxySocket = function (userId, localSocket) {
     local_proxy_socket[userId] = localSocket;
 };
 exports.clearLocalProxySocket = function () {
-
+    for (var i = 0; i < local_proxy_socket.length; i++) {
+        var tlsocketUserId = local_proxy_socket[i];
+        for (var userId in tlsocketUserId) {
+            var tlsocket = tlsocketUserId[userId];
+            if (!tlsocket.destroyed) {
+                tlsocket.end();
+            }
+        }
+    }
 };
 exports.removeLocalProxySocket = function (userId) {
     delete local_proxy_socket[userId];
