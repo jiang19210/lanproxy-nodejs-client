@@ -56,6 +56,7 @@ exports.decoder = function (buff) {
     var sn = (buf.readUInt32BE(offset) << 8) + buf.readUInt32BE(offset + 4);
     offset += 8;
     var uriLength = buf.readUInt8(offset);
+    offset += 1;
     var uriBuf = Buffer.alloc(uriLength);
     buf.copy(uriBuf, 0, offset, offset + uriLength);
     offset += uriLength;
