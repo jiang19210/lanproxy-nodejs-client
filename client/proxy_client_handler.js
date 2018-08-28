@@ -7,8 +7,24 @@ var net = require('net');
  * 和中转站的相关操作
  *
  * */
+exports.connectionAuth = connectionAuth;
+
 //连接并认证
-exports.connection = connection;
+function connectionAuth(port, host) {
+    var proxySocket = socketManager.connection(port, host, function (proxySocket, err) {
+        if (proxySocket != null) {
+            var message = severMessage.getMessage(severMessage.C_TYPE_AUTH, 0, severMessage.clientkey, null);
+            var buf = encodeDecoder.encoder(message);
+            proxySocket.write(buf);
+            console.log('connect proxy server %s:%s success', host, port);
+        } else {
+            console.log('connect proxy server %s:%s is close', host, port);
+            proxySocket = connectionAuth();
+        }
+    });
+    return proxySocket;
+};
+
 exports.heartbeat = function (proxySocket) {
     var msg = severMessage.getMessage(severMessage.TYPE_HEARTBEAT, 0, null, null);
     var buf = encodeDecoder.encoder(msg);
@@ -16,53 +32,7 @@ exports.heartbeat = function (proxySocket) {
     console.log('heartbeat time');
 };
 
-function connection(port, host) {
-    var proxySocket = net.createConnection(port, host, function () {
-        var message = severMessage.getMessage(severMessage.C_TYPE_AUTH, 0, severMessage.clientkey, null);
-        var buf = encodeDecoder.encoder(message);
-        proxySocket.write(buf);
-        console.log('connect proxy server %s:%s success', host, port)
-    });
-
-    proxySocket.on('connect', function () {
-        console.log('connect event')
-    });
-
-    proxySocket.on('error', function (err) {
-        console.log('error from sever, %s:%s, err : %s', host, port, err);
-    });
-
-    proxySocket.on('data', function (chunk) {
-        if (Buffer.isBuffer(chunk)) {
-            var msg = encodeDecoder.decoder(chunk);
-            console.log('recieved proxy message, type is %s', msg.type);
-            switch (msg.type) {
-                case severMessage.TYPE_CONNECT :
-                    handlerConnectMessage(msg);
-                    break;
-                case severMessage.TYPE_DISCONNECT :
-                    handleDisconnectMessage(msg);
-                    break;
-                case severMessage.P_TYPE_TRANSFER:
-                    handleTransferMessage(msg);
-                    break;
-                default :
-                    break;
-            }
-        } else {
-            console.error("not buf")
-        }
-    });
-
-    proxySocket.on('end', function () {
-        console.log('disconnected from sever, %s:%s', host, port);
-        proxySocket = connection(port, host);
-    });
-
-    return proxySocket;
-}
-
-function handlerConnectMessage(msg, proxySocket) {
+exports.handlerConnectMessage = function (msg, proxySocket) {
     console.log('handlerConnectMessage');
     var userId = msg.uri;
     var data = msg.data.toString();
@@ -79,11 +49,16 @@ function handlerConnectMessage(msg, proxySocket) {
                 var pmsg = severMessage.getMessage(severMessage.TYPE_CONNECT, 0, userId + '@' + severMessage.clientkey);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 tpsocket.write(pbuf);
+                localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
             } else {
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);
+                var tlsocket = tpsocket.next_socket;
+                if (!tlsocket.destroyed) {
+                    tlsocket.end();
+                }
             }
         })
     });
@@ -92,18 +67,38 @@ function handlerConnectMessage(msg, proxySocket) {
         var pbuf = encodeDecoder.encoder(pmsg);
         proxySocket.write(pbuf);
     })
-}
+    localSocket.on('data', function (chunk) {
+        var tpsocket = localSocket.next_socket;
+        if (tpsocket == null) {
+            localSocket.end();
+        } else {
+
+        }
+        if (Buffer.isBuffer(chunk)) {
+        } else {
+            console.error("not buf")
+        }
+    });
+};
 
 
-function handleDisconnectMessage(msg, proxySocket) {
+exports.handleDisconnectMessage = function (msg, tpsocket) {
     console.log('handleDisconnectMessage');
+    var localSocket = tpsocket.next_socket;
+    if (localSocket != null) {
+        delete tpsocket.next_socket;
+        localSocket.write(Buffer.alloc(0));
+        localSocket.end();
+    }
+};
 
 
-}
-
-
-function handleTransferMessage(msg) {
-    console.log('handleTransferMessage')
-
-
-}
+exports.handleTransferMessage = function (msg, tpsocket) {
+    console.log('handleTransferMessage');
+    var localSocket = tpsocket.next_socket;
+    if (localSocket != null) {
+        var buf = msg.data;
+        console.log('write data to local proxy, {}', buf.length);
+        localSocket.write(buf);
+    }
+};
