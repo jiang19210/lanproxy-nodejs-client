@@ -2,8 +2,7 @@ var net = require('net');
 var severMessage = require('./sever_message');
 var proxyClientHandler = require('./proxy_client_handler');
 var encodeDecoder = require('./encoder_decoder');
-var crypto = require('crypto');
-
+var util = require('./util');
 var MAX_POOL_SIZE = 100;
 var proxy_server_socket_pool = [];
 var local_proxy_socket = [];
@@ -13,14 +12,14 @@ exports.borrowProxySocket = function (callback) {
     if (socket != null) {
         callback(socket);
     } else {
-        connection(severMessage.port, severMessage.host, callback);
+        connection(severMessage.port, severMessage.host, callback, 'tpsocket');
     }
 };
 exports.addProxySocket = function (tpsocket) {
     if (proxy_server_socket_pool.length > MAX_POOL_SIZE) {
         tpsocket.end();
     } else {
-        tpsocket.token = token();
+        tpsocket.id = util.random();
         proxy_server_socket_pool.push(tpsocket);
         console.log('add tpsocket to the poole, socket is %s, pool size is %s', tpsocket.id);
     }
@@ -34,7 +33,7 @@ exports.removeProxySocket = function (tpsocket) {
 
 function indexOfSocket(tpsocket) {
     for (var i = 0; i < proxy_server_socket_pool.length; i++) {
-        if (proxy_server_socket_pool.token == tpsocket.token) {
+        if (proxy_server_socket_pool[i].id == tpsocket.id) {
             return i;
         }
     }
@@ -60,13 +59,13 @@ exports.removeLocalProxySocket = function (userId) {
 };
 exports.connection = connection;
 
-function connection(port, host, callback) {
+function connection(port, host, callback, socketType) {
     var proxySocket = net.createConnection(port, host, function () {
         callback(proxySocket);
     });
 
     proxySocket.on('connect', function () {
-        console.log('connect event')
+        console.log('connect proxy server %s:%s success, type is %s', host, port, socketType);
     });
 
     proxySocket.on('error', function (err) {
@@ -98,13 +97,8 @@ function connection(port, host, callback) {
 
     proxySocket.on('end', function () {
         console.log('disconnected from sever, %s:%s', host, port);
-        callback(null, null, 'end');
-        //proxySocket = connection(port, host);
+        callback(proxySocket, null, 'end');
     });
     return proxySocket;
 }
 
-function token() {
-    var buf = crypto.randomBytes(16);
-    return buf.toString('hex');
-}

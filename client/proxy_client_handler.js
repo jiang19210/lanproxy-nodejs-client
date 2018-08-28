@@ -16,13 +16,12 @@ function connectionAuth(port, host) {
             var message = severMessage.getMessage(severMessage.C_TYPE_AUTH, 0, severMessage.clientkey, null);
             var buf = encodeDecoder.encoder(message);
             proxySocket.write(buf);
-            console.log('connect proxy server %s:%s success', host, port);
         } else {
             console.log('connect proxy server %s:%s is close', host, port);
             socketManager.clearLocalProxySocket();
             proxySocket = connectionAuth();
         }
-    });
+    }, 'proxySocket');
     return proxySocket;
 };
 
@@ -41,7 +40,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
     var ip = serverInfo[0];
     var port = parseInt(serverInfo[1]);
     var localSocket = net.createConnection(port, ip, function () {
-        console.log('connect localproxy succes, %s:s%', ip, port);
+        console.log('connect localproxy succes, %s:%s', ip, port);
         socketManager.borrowProxySocket(function (tpsocket, err, end) {
             if (tpsocket) {
                 tpsocket.next_socket = localSocket;
@@ -76,7 +75,8 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         var tpsocket = localSocket.next_socket;
         if (tpsocket != null) {
             var dismsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
-            tpsocket.write(dismsg);
+            var dismsgbuf = encodeDecoder.encoder(dismsg);
+            tpsocket.write(dismsgbuf);
         }
     });
     localSocket.on('data', function (chunk) {
@@ -86,7 +86,8 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         } else {
             var userId = localSocket.userId;
             var transfermsg = severMessage.getMessage(severMessage.P_TYPE_TRANSFER, 0, userId, chunk);
-            tpsocket.write(transfermsg);
+            var transfermsgbuf = encodeDecoder.encoder(transfermsg);
+            tpsocket.write(transfermsgbuf);
             console.log('write data to proxy server, %s', chunk.length);
         }
     });
@@ -109,7 +110,7 @@ exports.handleTransferMessage = function (msg, tpsocket) {
     var localSocket = tpsocket.next_socket;
     if (localSocket != null) {
         var buf = msg.data;
-        console.log('write data to local proxy, {}', buf.length);
+        console.log('write data to local proxy, %s %s', buf.length, Buffer.isBuffer(buf));
         localSocket.write(buf);
     }
 };

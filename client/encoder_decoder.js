@@ -31,7 +31,7 @@ exports.encoder = function (msg) {
         offset += 1;
     }
     if (msg.data != null) {
-        buf.write(msg.data, offset);
+        msg.data.copy(buf, offset);
     }
     return buf;
 };
