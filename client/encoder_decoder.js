@@ -57,13 +57,12 @@ exports.decoder = function (buff) {
     offset += 8;
     var uriLength = buf.readUInt8(offset);
     var uriBuf = Buffer.alloc(uriLength);
-    buf.copy(uriBuf, 0, offset, uriLength);
+    buf.copy(uriBuf, 0, offset, offset + uriLength);
     offset += uriLength;
     var uri = uriBuf.toString();
 
     var dataBuf = Buffer.alloc(frameLength - TYPE_SIZE - SERIAL_NUMBER_SIZE - URI_LENGTH_SIZE - uriLength);
-    buf.copy(dataBuf, 0, offset, dataBuf.length);
-    //var data = dataBuf.toString();
+    buf.copy(dataBuf, 0, offset, offset + dataBuf.length);
 
     return {
         'type': type,
