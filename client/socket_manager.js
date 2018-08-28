@@ -91,7 +91,6 @@ function connection(port, host, callback) {
                 default :
                     break;
             }
-            console.log('socket id =' + proxySocket.socketId)
         } else {
             console.error("not buf")
         }
