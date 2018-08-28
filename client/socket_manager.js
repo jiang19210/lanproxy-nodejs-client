@@ -44,7 +44,12 @@ function indexOfSocket(tpsocket) {
 exports.addLocalProxySocket = function (userId, localSocket) {
     local_proxy_socket[userId] = localSocket;
 };
+exports.clearLocalProxySocket = function () {
 
+};
+exports.removeLocalProxySocket = function (userId) {
+    delete local_proxy_socket[userId];
+};
 exports.connection = connection;
 
 function connection(port, host, callback) {

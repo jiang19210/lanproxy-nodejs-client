@@ -41,7 +41,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
     var port = parseInt(serverInfo[1]);
     var localSocket = net.createConnection(port, ip, function () {
         console.log('connect localproxy succes, %s:s%', ip, port);
-        socketManager.borrowProxySocket(function (tpsocket) {
+        socketManager.borrowProxySocket(function (tpsocket, err, end) {
             if (tpsocket) {
                 tpsocket.next_socket = localSocket;
                 localSocket.next_socket = tpsocket;
@@ -51,14 +51,16 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
                 tpsocket.write(pbuf);
                 localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
-            } else {
+            } else if (err) {
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);
+            } else {
                 var tlsocket = tpsocket.next_socket;
                 if (!tlsocket.destroyed) {
                     tlsocket.end();
                 }
+                socketManager.removeProxySocket(tpsocket);
             }
         })
     });
@@ -66,17 +68,25 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
         var pbuf = encodeDecoder.encoder(pmsg);
         proxySocket.write(pbuf);
-    })
+    });
+    localSocket.on('end', function () {
+        var userId = localSocket.userId;
+        socketManager.removeLocalProxySocket(userId);
+        var tpsocket = localSocket.next_socket;
+        if (tpsocket != null) {
+            var dismsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
+            tpsocket.write(dismsg);
+        }
+    });
     localSocket.on('data', function (chunk) {
         var tpsocket = localSocket.next_socket;
         if (tpsocket == null) {
             localSocket.end();
         } else {
-
-        }
-        if (Buffer.isBuffer(chunk)) {
-        } else {
-            console.error("not buf")
+            var userId = localSocket.userId;
+            var transfermsg = severMessage.getMessage(severMessage.P_TYPE_TRANSFER, 0, userId, chunk);
+            tpsocket.write(transfermsg);
+            console.log('write data to proxy server, %s', chunk.length);
         }
     });
 };
