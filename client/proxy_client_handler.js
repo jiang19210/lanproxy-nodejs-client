@@ -101,7 +101,7 @@ exports.handleDisconnectMessage = function (msg, tpsocket) {
     var localSocket = tpsocket.next_socket;
     if (localSocket != null) {
         delete tpsocket.next_socket;
-        localSocket.write(Buffer.alloc(0));
+        localSocket.write(new Buffer(0));
         localSocket.end();
     }
 };

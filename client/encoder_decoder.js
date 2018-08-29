@@ -8,7 +8,7 @@ exports.encoder = function (msg) {
     }
 
     if (msg.data != null) {
-        bodyLength += Buffer.byteLength(msg.data);
+        bodyLength += msg.data.length;
     }
 
     var buf = new Buffer(bodyLength + HEADER_SIZE);
