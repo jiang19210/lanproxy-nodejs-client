@@ -28,13 +28,6 @@ function connectionAuth(port, host) {
     return proxySocket;
 };
 
-exports.heartbeat = function (proxySocket) {
-    var msg = severMessage.getMessage(severMessage.TYPE_HEARTBEAT, 0, null, null);
-    var buf = encodeDecoder.encoder(msg);
-    proxySocket.write(buf);
-    console.log('heartbeat time');
-};
-
 exports.handlerConnectMessage = function (msg, proxySocket) {
     console.log('handlerConnectMessage');
     var userId = msg.uri;
