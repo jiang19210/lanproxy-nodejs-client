@@ -2,6 +2,7 @@ var encodeDecoder = require('./encoder_decoder');
 var severMessage = require('./sever_message');
 var socketManager = require('./socket_manager');
 var net = require('net');
+var util = require('./util');
 
 /***
  * 和中转站的相关操作
@@ -54,11 +55,14 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
                 localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
             } else if (err) {
+                console.log('[tpsocket]temp err log socketId=%s.', tpsocket.id);
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);
             } else {
+                console.log('[tpsocket]temp end log socketId=%s.', tpsocket.id);
                 var tlsocket = tpsocket.next_socket;
+                console.log('[tpsocket]temp end log tlsocket destroyed=%s.', tpsocket.destroyed);
                 if (!tlsocket.destroyed) {
                     tlsocket.end();
                 }
@@ -80,6 +84,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
             var dismsgbuf = encodeDecoder.encoder(dismsg);
             tpsocket.write(dismsgbuf);
         }
+        console.log('local proxy end , socketId=%s.', localSocket.id);
     });
     localSocket.on('data', function (chunk) {
         var tpsocket = localSocket.next_socket;
@@ -92,6 +97,9 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
             tpsocket.write(transfermsgbuf);
             console.log('write data to proxy server, %s', chunk.length);
         }
+    });
+    localSocket.on('connect', function () {
+        localSocket.id = util.random('local');
     });
 };
 
@@ -113,7 +121,7 @@ exports.handleTransferMessage = function (msg, tpsocket) {
     var localSocket = tpsocket.next_socket;
     if (localSocket != null) {
         var buf = msg.data;
-        console.log('write data to local proxy, %s %s', buf.length, Buffer.isBuffer(buf));
+        console.log('write data to local proxy, socketId=%s', localSocket.id);
         localSocket.write(buf);
     }
 };
