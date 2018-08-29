@@ -5,7 +5,7 @@ var encodeDecoder = require('./encoder_decoder');
 var util = require('./util');
 var MAX_POOL_SIZE = 100;
 var proxy_server_socket_pool = [];
-var local_proxy_socket = [];
+var local_proxy_socket = {};
 
 exports.borrowProxySocket = function (callback) {
     var socket = proxy_server_socket_pool.pop();
@@ -41,13 +41,15 @@ function indexOfSocket(tpsocket) {
 }
 
 exports.addLocalProxySocket = function (userId, localSocket) {
-    local_proxy_socket[userId] = localSocket;
+    local_proxy_socket[userId + ''] = localSocket;
 };
 exports.clearLocalProxySocket = function () {
     for (var i = 0; i < local_proxy_socket.length; i++) {
         var tlsocketUserId = local_proxy_socket[i];
+        console.log('tlsocketUserId')
         for (var userId in tlsocketUserId) {
             var tlsocket = tlsocketUserId[userId];
+            console.log('userId=' + userId);
             if (!tlsocket.destroyed) {
                 tlsocket.end();
             }
@@ -65,6 +67,9 @@ function connection(port, host, callback, socketType) {
     });
 
     proxySocket.on('connect', function () {
+        setInterval(function () {
+            heartbeat(proxySocket);
+        }, 1000 * 30);
         console.log('connect proxy server %s:%s success, type is %s', host, port, socketType);
     });
 
@@ -102,3 +107,9 @@ function connection(port, host, callback, socketType) {
     return proxySocket;
 }
 
+function heartbeat (proxySocket) {
+    var msg = severMessage.getMessage(severMessage.TYPE_HEARTBEAT, 0, null, null);
+    var buf = encodeDecoder.encoder(msg);
+    proxySocket.write(buf);
+    console.log('heartbeat time');
+}
