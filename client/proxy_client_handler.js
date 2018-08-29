@@ -72,7 +72,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
     });
     localSocket.on('end', function () {
         var userId = localSocket.userId;
-        socketManager.removeLocalProxySocket(userId);
+        socketManager.removeLocalProxySocket(userId, localSocket);
         var tpsocket = localSocket.next_socket;
         if (tpsocket != null) {
             var dismsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);

@@ -53,8 +53,8 @@ exports.clearLocalProxySocket = function () {
         }
     }
 };
-exports.removeLocalProxySocket = function (userId) {
-    console.log('removeLocalProxySocket, userId=%s', userId);
+exports.removeLocalProxySocket = function (userId, localSocket) {
+    console.log('removeLocalProxySocket, userId=%s, socketId=%s', userId, localSocket.id);
     delete local_proxy_socket[userId];
 };
 exports.connection = connection;
