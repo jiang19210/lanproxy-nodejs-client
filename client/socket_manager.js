@@ -52,6 +52,7 @@ exports.clearLocalProxySocket = function () {
             tlsocket.end();
         }
     }
+    local_proxy_socket = {};
 };
 exports.removeLocalProxySocket = function (userId, localSocket) {
     console.log('removeLocalProxySocket, userId=%s, socketId=%s', userId, localSocket.id);
