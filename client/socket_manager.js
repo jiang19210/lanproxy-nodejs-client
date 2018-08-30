@@ -20,7 +20,7 @@ exports.addProxySocket = function (tpsocket) {
         tpsocket.end();
     } else {
         proxy_server_socket_pool.push(tpsocket);
-        console.log('add tpsocket to the pool, socketId=%s, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
+        console.log('[socketId=%s]add tpsocket to the pool, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
     }
 };
 exports.removeProxySocket = function (tpsocket) {
@@ -28,7 +28,7 @@ exports.removeProxySocket = function (tpsocket) {
     if (index > -1) {
         proxy_server_socket_pool.splice(index, 1);
     }
-    console.log('remove tpsocket from the pool, socketId=%s, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
+    console.log('[socketId=%s]remove tpsocket from the pool, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
 };
 
 function indexOfSocket(tpsocket) {
@@ -41,7 +41,7 @@ function indexOfSocket(tpsocket) {
 }
 
 exports.addLocalProxySocket = function (userId, localSocket) {
-    console.log('addLocalProxySocket, userId=%s, socketId=%s', userId, localSocket.id);
+    console.log('[socketId=%s]addLocalProxySocket, userId=%s', localSocket.id, userId);
     local_proxy_socket[userId + ''] = localSocket;
 };
 exports.clearLocalProxySocket = function () {
@@ -49,13 +49,14 @@ exports.clearLocalProxySocket = function () {
     for (var userId in local_proxy_socket) {
         var tlsocket = local_proxy_socket[userId];
         if (!tlsocket.destroyed) {
+            console.log('clearLocalProxySocket userId=%s', userId);
             tlsocket.end();
         }
     }
     local_proxy_socket = {};
 };
 exports.removeLocalProxySocket = function (userId, localSocket) {
-    console.log('removeLocalProxySocket, userId=%s, socketId=%s', userId, localSocket.id);
+    console.log('[socketId=%s]removeLocalProxySocket, userId=%s', localSocket.id, userId);
     delete local_proxy_socket[userId];
 };
 exports.connection = connection;
@@ -70,17 +71,17 @@ function connection(port, host, callback, socketType) {
         setInterval(function () {
             heartbeat(proxySocket);
         }, 1000 * 30);
-        console.log('connect proxy server %s:%s success, type=%s, socketId=%s', host, port, socketType, proxySocket.id);
+        console.log('[socketId=%s]new connect proxy server %s:%s success, type=%s', proxySocket.id, host, port, socketType);
     });
 
     proxySocket.on('error', function (err) {
-        console.log('error from proxy sever, %s:%s, socketId=%s, err=%s', host, port, proxySocket.id, err);
+        console.log('[socketId=%s]error from proxy sever, %s:%s, err=%s', proxySocket.id, host, port, err);
         callback(null, err);
     });
 
     proxySocket.on('data', function (chunk) {
         var msg = encodeDecoder.decoder(chunk);
-        console.log('recieved proxy server message, type=%s, socketId=%s.', msg.type, proxySocket.id);
+        console.log('[socketId=%s]recieved proxy server message, type=%s', proxySocket.id, msg.type);
         switch (msg.type) {
             case severMessage.TYPE_CONNECT :
                 proxyClientHandler.handlerConnectMessage(msg, proxySocket);
@@ -97,7 +98,7 @@ function connection(port, host, callback, socketType) {
     });
 
     proxySocket.on('end', function () {
-        console.log('disconnected from proxy sever, %s:%s, sockId=%s', host, port, proxySocket.id);
+        console.log('[sockId=%s]disconnected from proxy sever, %s:%s', proxySocket.id, host, port);
         callback(proxySocket, null, 'end');
     });
     return proxySocket;

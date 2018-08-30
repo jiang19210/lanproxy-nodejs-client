@@ -18,7 +18,7 @@ function connectionAuth(port, host) {
             var buf = encodeDecoder.encoder(message);
             proxySocket.write(buf);
         } else {
-            console.log('connect proxy server %s:%s is close', host, port);
+            console.log('[socketId=%s]connect proxy server %s:%s is close', proxySocket.id, host, port);
             socketManager.clearLocalProxySocket();
             setTimeout(function () {
                 proxySocket = connectionAuth(port, host);
@@ -36,7 +36,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
     var port = parseInt(serverInfo[1]);
     var localSocket = net.createConnection(port, ip, function () {
         localSocket.id = util.random('local');
-        console.log('connect localproxy succes, %s:%s, tocketId=%s', ip, port, localSocket.id);
+        console.log('[socketId=%s]new connect localproxy succes, %s:%s', localSocket.id, ip, port);
         socketManager.borrowProxySocket(function (tpsocket, err, end) {
             console.log('into borrowProxySocket, socketId=%s', tpsocket.id);
             if (tpsocket) {
@@ -49,12 +49,12 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
                 localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
             } else if (err) {
-                console.log('[tpsocket]borrowProxySocket err, socketId=%s, err=%s', tpsocket.id, err);
+                console.log('[socketId=%s][tpsocket]borrowProxySocket err=%s', tpsocket.id, err);
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);
             } else {
-                console.log('[tpsocket]temp end log socketId=%s.', tpsocket.id);
+                console.log('[socketId=%s][tpsocket] end', tpsocket.id);
                 var tlsocket = tpsocket.next_socket;
                 console.log('[tpsocket]temp end log tlsocket destroyed=%s.', tpsocket.destroyed);
                 if (!tlsocket.destroyed) {
@@ -65,7 +65,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         })
     });
     localSocket.on('error', function (err) {
-        console.log('[localSocket] error, socketId=%s, err=%s', localSocket.id, err);
+        console.log('[socketId=%s][localSocket] err=%s', localSocket.id, err);
         var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
         var pbuf = encodeDecoder.encoder(pmsg);
         proxySocket.write(pbuf);
@@ -79,7 +79,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
             var dismsgbuf = encodeDecoder.encoder(dismsg);
             tpsocket.write(dismsgbuf);
         }
-        console.log('[localSocket] end , socketId=%s.', localSocket.id);
+        console.log('[socketId=%s][localSocket] end', localSocket.id);
     });
     localSocket.on('data', function (chunk) {
         var tpsocket = localSocket.next_socket;
