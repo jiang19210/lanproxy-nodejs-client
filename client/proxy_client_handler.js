@@ -38,8 +38,8 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         localSocket.id = util.random('local');
         console.log('[socketId=%s]new connect localproxy succes, %s:%s', localSocket.id, ip, port);
         socketManager.borrowProxySocket(function (tpsocket, err, end) {
-            console.log('into borrowProxySocket, socketId=%s', tpsocket.id);
             if (tpsocket) {
+                console.log('into borrowProxySocket, socketId=%s', tpsocket.id);
                 tpsocket.next_socket = localSocket;
                 localSocket.next_socket = tpsocket;
                 //远程绑定
@@ -49,7 +49,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
                 localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
             } else if (err) {
-                console.log('[socketId=%s][tpsocket]borrowProxySocket err=%s', tpsocket.id, err);
+                console.log('[socketId=][tpsocket]borrowProxySocket err=%s', err);
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);

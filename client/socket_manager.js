@@ -3,7 +3,7 @@ var severMessage = require('./sever_message');
 var proxyClientHandler = require('./proxy_client_handler');
 var encodeDecoder = require('./encoder_decoder');
 var util = require('./util');
-var MAX_POOL_SIZE = 100;
+var MAX_POOL_SIZE = 10;
 var proxy_server_socket_pool = [];
 var local_proxy_socket = {};
 
@@ -16,8 +16,10 @@ exports.borrowProxySocket = function (callback) {
     }
 };
 exports.addProxySocket = function (tpsocket) {
+    console.log(proxy_server_socket_pool.length > MAX_POOL_SIZE)
     if (proxy_server_socket_pool.length > MAX_POOL_SIZE) {
         tpsocket.end();
+        console.log('[socketId=%s] tpsocket close', tpsocket.id);
     } else {
         proxy_server_socket_pool.push(tpsocket);
         console.log('[socketId=%s]add tpsocket to the pool, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
@@ -68,14 +70,16 @@ function connection(port, host, callback, socketType) {
     });
 
     proxySocket.on('connect', function () {
-        setInterval(function () {
+        var intervalId = setInterval(function () {
             heartbeat(proxySocket);
         }, 1000 * 30);
+        proxySocket.intervalId = intervalId;
         console.log('[socketId=%s]new connect proxy server %s:%s success, type=%s', proxySocket.id, host, port, socketType);
     });
 
     proxySocket.on('error', function (err) {
         console.log('[socketId=%s]error from proxy sever, %s:%s, err=%s', proxySocket.id, host, port, err);
+        clearInterval(proxySocket.intervalId);
         callback(null, err);
     });
 
