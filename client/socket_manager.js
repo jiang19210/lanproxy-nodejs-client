@@ -16,7 +16,6 @@ exports.borrowProxySocket = function (callback) {
     }
 };
 exports.addProxySocket = function (tpsocket) {
-    console.log(proxy_server_socket_pool.length > MAX_POOL_SIZE)
     if (proxy_server_socket_pool.length > MAX_POOL_SIZE) {
         tpsocket.end();
     } else {
