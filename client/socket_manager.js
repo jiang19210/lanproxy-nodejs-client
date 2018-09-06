@@ -19,7 +19,6 @@ exports.addProxySocket = function (tpsocket) {
     console.log(proxy_server_socket_pool.length > MAX_POOL_SIZE)
     if (proxy_server_socket_pool.length > MAX_POOL_SIZE) {
         tpsocket.end();
-        console.log('[socketId=%s] tpsocket close', tpsocket.id);
     } else {
         proxy_server_socket_pool.push(tpsocket);
         console.log('[socketId=%s]add tpsocket to the pool, pool size=%s', tpsocket.id, proxy_server_socket_pool.length);
@@ -65,7 +64,7 @@ exports.connection = connection;
 
 function connection(port, host, callback, socketType) {
     var proxySocket = net.createConnection(port, host, function () {
-        proxySocket.id = util.random('proxy');
+        proxySocket.id = util.random(socketType);
         callback(proxySocket);
     });
 
@@ -102,7 +101,7 @@ function connection(port, host, callback, socketType) {
     });
 
     proxySocket.on('end', function () {
-        console.log('[sockId=%s]disconnected from proxy sever, %s:%s', proxySocket.id, host, port);
+        console.log('[sockId=%s]close from proxy sever, %s:%s', proxySocket.id, host, port);
         callback(proxySocket, null, 'end');
     });
     return proxySocket;

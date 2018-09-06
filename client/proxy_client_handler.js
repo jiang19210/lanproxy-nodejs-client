@@ -18,13 +18,12 @@ function connectionAuth(port, host) {
             var buf = encodeDecoder.encoder(message);
             proxySocket.write(buf);
         } else {
-            console.log('[socketId=%s]connect proxy server %s:%s is close', proxySocket.id, host, port);
             socketManager.clearLocalProxySocket();
             setTimeout(function () {
                 proxySocket = connectionAuth(port, host);
             }, 1000 * 10);
         }
-    }, 'proxySocket');
+    }, 'main_proxy_socket');
     return proxySocket;
 };
 
@@ -39,7 +38,6 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         console.log('[socketId=%s]new connect localproxy succes, %s:%s', localSocket.id, ip, port);
         socketManager.borrowProxySocket(function (tpsocket, err, end) {
             if (tpsocket) {
-                console.log('into borrowProxySocket, socketId=%s', tpsocket.id);
                 tpsocket.next_socket = localSocket;
                 localSocket.next_socket = tpsocket;
                 //远程绑定
@@ -49,14 +47,11 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
                 localSocket.userId = userId;
                 socketManager.addLocalProxySocket(userId, localSocket);
             } else if (err) {
-                console.log('[socketId=][tpsocket]borrowProxySocket err=%s', err);
                 var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
                 var pbuf = encodeDecoder.encoder(pmsg);
                 proxySocket.write(pbuf);
             } else {
-                console.log('[socketId=%s][tpsocket] end', tpsocket.id);
                 var tlsocket = tpsocket.next_socket;
-                console.log('[tpsocket]temp end log tlsocket destroyed=%s.', tpsocket.destroyed);
                 if (!tlsocket.destroyed) {
                     tlsocket.end();
                 }
@@ -79,7 +74,7 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
             var dismsgbuf = encodeDecoder.encoder(dismsg);
             tpsocket.write(dismsgbuf);
         }
-        console.log('[socketId=%s][localSocket] end', localSocket.id);
+        console.log('[socketId=%s][localSocket] close', localSocket.id);
     });
     localSocket.on('data', function (chunk) {
         var tpsocket = localSocket.next_socket;
