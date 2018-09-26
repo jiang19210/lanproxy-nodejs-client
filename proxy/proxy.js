@@ -18,7 +18,6 @@ var proxy = http.createServer(function (req, res) {
         'auth': req.auth
     };
 
-    console.log('request options ==>' + JSON.stringify(options));
     var proxyReq = http.request(options, function (proxyRes) {
         res.writeHead(proxyRes.statusCode, safety(proxyRes.headers));
         proxyRes.on('data', function (chunk) {
@@ -50,7 +49,6 @@ proxy.listen('5488');
 proxy.on('connect', function (req, cltSocket, head) {
     // 连接到一个服务器
     var srvUrl = url.parse('http://' + req.url);
-    console.log('connect url : ' + req.url);
     var srvSocket = net.connect(srvUrl.port, srvUrl.hostname, function () {
         cltSocket.write('HTTP/1.1 200 Connection Established\r\nProxy-agent: Node.js-Proxy\r\n\r\n');
         srvSocket.write(head);

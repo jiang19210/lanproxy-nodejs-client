@@ -8,10 +8,10 @@ exports.encoder = function (msg) {
     }
 
     if (msg.data != null) {
-        bodyLength += Buffer.byteLength(msg.data);
+        bodyLength += msg.data.length;
     }
 
-    var buf = Buffer.alloc(bodyLength + HEADER_SIZE);
+    var buf = new Buffer(bodyLength + HEADER_SIZE);
     var offset = 0;
     buf.writeUInt32BE(bodyLength, offset);
     offset += 4;
@@ -27,7 +27,7 @@ exports.encoder = function (msg) {
         buf.write(msg.uri, offset);
         offset += uriBytesLength;
     } else {
-        buf.writeUInt8(0x00);
+        buf.writeUInt8(0x00, offset);
         offset += 1;
     }
     if (msg.data != null) {
@@ -57,12 +57,12 @@ exports.decoder = function (buff) {
     offset += 8;
     var uriLength = buf.readUInt8(offset);
     offset += 1;
-    var uriBuf = Buffer.alloc(uriLength);
+    var uriBuf = new Buffer(uriLength);
     buf.copy(uriBuf, 0, offset, offset + uriLength);
     offset += uriLength;
     var uri = uriBuf.toString();
 
-    var dataBuf = Buffer.alloc(frameLength - TYPE_SIZE - SERIAL_NUMBER_SIZE - URI_LENGTH_SIZE - uriLength);
+    var dataBuf = new Buffer(frameLength - TYPE_SIZE - SERIAL_NUMBER_SIZE - URI_LENGTH_SIZE - uriLength);
     buf.copy(dataBuf, 0, offset, offset + dataBuf.length);
 
     return {

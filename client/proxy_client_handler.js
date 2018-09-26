@@ -2,6 +2,7 @@ var encodeDecoder = require('./encoder_decoder');
 var severMessage = require('./sever_message');
 var socketManager = require('./socket_manager');
 var net = require('net');
+var util = require('./util');
 
 /***
  * 和中转站的相关操作
@@ -17,30 +18,24 @@ function connectionAuth(port, host) {
             var buf = encodeDecoder.encoder(message);
             proxySocket.write(buf);
         } else {
-            console.log('connect proxy server %s:%s is close', host, port);
             socketManager.clearLocalProxySocket();
-            proxySocket = connectionAuth();
+            setTimeout(function () {
+                proxySocket = connectionAuth(port, host);
+            }, 1000 * 10);
         }
-    }, 'proxySocket');
+    }, 'main_proxy_socket');
     return proxySocket;
 };
 
-exports.heartbeat = function (proxySocket) {
-    var msg = severMessage.getMessage(severMessage.TYPE_HEARTBEAT, 0, null, null);
-    var buf = encodeDecoder.encoder(msg);
-    proxySocket.write(buf);
-    console.log('heartbeat time');
-};
-
 exports.handlerConnectMessage = function (msg, proxySocket) {
-    console.log('handlerConnectMessage');
     var userId = msg.uri;
     var data = msg.data.toString();
     var serverInfo = data.split(':');
     var ip = serverInfo[0];
     var port = parseInt(serverInfo[1]);
     var localSocket = net.createConnection(port, ip, function () {
-        console.log('connect localproxy succes, %s:%s', ip, port);
+        localSocket.id = util.random('local');
+        console.log('[socketId=%s]new connect localproxy succes, %s:%s', localSocket.id, ip, port);
         socketManager.borrowProxySocket(function (tpsocket, err, end) {
             if (tpsocket) {
                 tpsocket.next_socket = localSocket;
@@ -65,19 +60,21 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
         })
     });
     localSocket.on('error', function (err) {
+        console.log('[socketId=%s][localSocket] err=%s', localSocket.id, err);
         var pmsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
         var pbuf = encodeDecoder.encoder(pmsg);
         proxySocket.write(pbuf);
     });
     localSocket.on('end', function () {
         var userId = localSocket.userId;
-        socketManager.removeLocalProxySocket(userId);
+        socketManager.removeLocalProxySocket(userId, localSocket);
         var tpsocket = localSocket.next_socket;
         if (tpsocket != null) {
             var dismsg = severMessage.getMessage(severMessage.TYPE_DISCONNECT, 0, userId, null);
             var dismsgbuf = encodeDecoder.encoder(dismsg);
             tpsocket.write(dismsgbuf);
         }
+        console.log('[socketId=%s][localSocket] close', localSocket.id);
     });
     localSocket.on('data', function (chunk) {
         var tpsocket = localSocket.next_socket;
@@ -88,29 +85,26 @@ exports.handlerConnectMessage = function (msg, proxySocket) {
             var transfermsg = severMessage.getMessage(severMessage.P_TYPE_TRANSFER, 0, userId, chunk);
             var transfermsgbuf = encodeDecoder.encoder(transfermsg);
             tpsocket.write(transfermsgbuf);
-            console.log('write data to proxy server, %s', chunk.length);
         }
     });
 };
 
 
 exports.handleDisconnectMessage = function (msg, tpsocket) {
-    console.log('handleDisconnectMessage');
     var localSocket = tpsocket.next_socket;
     if (localSocket != null) {
         delete tpsocket.next_socket;
-        localSocket.write(Buffer.alloc(0));
+        socketManager.addProxySocket(tpsocket);
+        localSocket.write(new Buffer(0));
         localSocket.end();
     }
 };
 
 
 exports.handleTransferMessage = function (msg, tpsocket) {
-    console.log('handleTransferMessage');
     var localSocket = tpsocket.next_socket;
     if (localSocket != null) {
         var buf = msg.data;
-        console.log('write data to local proxy, %s %s', buf.length, Buffer.isBuffer(buf));
         localSocket.write(buf);
     }
 };
