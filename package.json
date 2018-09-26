@@ -1,5 +1,16 @@
 {
+  "name": "lanproxy-nodejs-client",
+  "version": "0.0.01",
+  "main": "./client/proxy_client_container",
+  "scripts": {
+    "start": "node "
+  },
+  "keywords": [
+    "lanproxy-nodejs-client",
+    "lanproxy"
+  ],
+  "author": "jiang19210",
+  "license": "ISC",
   "dependencies": {
-    "socksv5": "^0.0.6"
   }
 }

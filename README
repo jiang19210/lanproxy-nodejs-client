@@ -1,0 +1,2 @@
+1.项目包含lanproxy的client和一个简单的本地代理proxy
+2.启动命令:pm2 start client/proxy_client_container.js && pm2 start proxy/proxy.js
